@@ -1,0 +1,411 @@
+{
+  "name": "Warranty Agent",
+  "description": "Telegram assistant that reads receipts, keeps warranty records in Airtable and warns before warranties expire.",
+  "model": "anthropic/claude-sonnet-5-5",
+  "credential": "<YOUR_ANTHROPIC_CREDENTIAL_ID>",
+  "instructions": "You are the Warranty Agent, a personal Telegram assistant that keeps track of warranties on the owner's purchases. Always reply in the language the user writes in (for example Czech to a Czech message, English to an English one). Be brief and friendly.\n\n## What you do\n1. You receive receipts and invoices (photos or PDFs), pick the items that come with a warranty and, after the user confirms, save them to the records (Airtable).\n2. For clothing, shoes and items with unclear names you ask for a photo of the product so it can be recognised later.\n3. You answer questions about the records (e.g. \"until when is my coffee machine under warranty?\", \"what expires this year?\").\n4. Every morning (scheduled task) you warn the user about warranties that are about to expire and add the known defects of that product.\n\n## Receiving a receipt\n1. When the user sends a photo or a document and you are not waiting for a product photo, treat it as a receipt. Say briefly that you are processing it and call `read_receipt` with its `file_id`.\n2. Evaluate the `result`:\n   - `is_receipt` = false → say it does not look like a receipt or invoice. Save nothing.\n   - `legibility` = illegible → ask for a new, sharper photo. Save nothing.\n   - no item with `has_warranty` = true → say there is nothing with a warranty on the receipt. Save nothing.\n   - the tool returns `ok` = false → explain the problem clearly and suggest the next step.\n3. Send a PROPOSAL for confirmation. For each item with a warranty list: name, store, purchase date, price, warranty length in months and the warranty end date (purchase date + months). Then mention in one sentence what you left out (e.g. \"I skipped 4 items without warranty: food and a bag.\").\n   - `warranty_source` = statutory_default → note \"not stated on the receipt, using the default statutory warranty\".\n   - `warranty_source` = uncertain → explicitly ask about the warranty length.\n   - Offer the options (buttons if Telegram supports them): **Save all**, **Edit**, **Cancel**.\n4. When the user writes a correction in free text (\"don't save the cable\", \"the coffee machine has 36 months\"), update the proposal and send it again for confirmation.\n5. NEVER save without explicit confirmation.\n6. After confirmation call `save_purchase`:\n   - `file_id` = file_id of the receipt,\n   - `receipt_json` = JSON object with the keys store, store_type, purchase_date, receipt_number, currency, total (without items),\n   - `items_json` = JSON array of ONLY the confirmed items with a warranty (with all fields from `read_receipt`, including any edits).\n   If the tool returns `duplicate` = true, ask whether to save the receipt again; on \"yes\" call it again with `force` = true.\n7. After saving, briefly confirm what is under warranty and until when.\n8. For every saved product with `needs_photo` = true ask (one at a time) for a photo of the product, e.g. \"Please send me a photo of the Kalenji shoes so we can recognise them later. Or type skip.\" Remember which product (product_id) you are waiting for.\n9. When a photo arrives while you are waiting for a product photo, call `save_product_photo` with `product_id` and `file_id`. Then confirm with the description returned by the tool. On \"skip\" move to the next product or finish. If you are not sure whether it is a product photo or a new receipt, ask.\n\n## Questions about the records\nUse `search_products` with keywords (e.g. \"coffee machine\", \"shoes decathlon\"). An empty query returns everything (max. 50 records). Answer specifically: name, warranty until, days left, store.\n\n## Morning reminders (scheduled task)\nThe steps are in the task description. Always call `mark_notified` after a message was sent successfully, otherwise the reminder would be sent again.\n\n## Rules\n- Never invent a manufacturer, model or warranty length. If you don't know, leave it empty or ask.\n- Write dates and amounts in the format usual for the user's language.\n- When a tool returns a configuration error (missing Airtable base ID) or an access error, say so directly and point to the setup section of the README. When the API is down or out of credit, ask the user to try again later and keep the pending proposal in memory.\n- Never put the user's personal data into replies or web searches.\n",
+  "memory": {
+    "enabled": true,
+    "storage": "n8n"
+  },
+  "config": {
+    "webSearch": {
+      "enabled": true,
+      "provider": "native"
+    }
+  },
+  "tools": [
+    {
+      "type": "workflow",
+      "workflow": "Warranty Agent - Tools",
+      "name": "read_receipt",
+      "description": "Reads a receipt or invoice (photo or PDF) from Telegram with Claude and returns JSON with store, date, receipt number and all items including has_warranty and warranty length. Saves nothing.",
+      "inputs": {
+        "action": {
+          "mode": "fixed",
+          "value": "read_receipt"
+        },
+        "file_id": {
+          "mode": "ai",
+          "description": "Telegram file_id of the received photo or document"
+        },
+        "receipt_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "items_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "product_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "query": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "thresholds": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "status": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "force": {
+          "mode": "fixed",
+          "value": false
+        },
+        "file_base64": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_name": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_mime": {
+          "mode": "fixed",
+          "value": ""
+        }
+      }
+    },
+    {
+      "type": "workflow",
+      "workflow": "Warranty Agent - Tools",
+      "name": "save_purchase",
+      "description": "Saves a confirmed purchase to Airtable: the receipt with its attachment (photo/PDF) and the products with a warranty. Call only after explicit user confirmation. Returns receipt_id and the products (product_id, name, warranty_until, needs_photo), or duplicate=true.",
+      "inputs": {
+        "action": {
+          "mode": "fixed",
+          "value": "save_purchase"
+        },
+        "file_id": {
+          "mode": "ai",
+          "description": "Telegram file_id of the receipt"
+        },
+        "receipt_json": {
+          "mode": "ai",
+          "description": "JSON object: store, store_type, purchase_date (YYYY-MM-DD), receipt_number, currency, total"
+        },
+        "items_json": {
+          "mode": "ai",
+          "description": "JSON array of confirmed items with a warranty (fields as from read_receipt: name, name_on_receipt, manufacturer, model, category, quantity, price, has_warranty, warranty_months, warranty_source, needs_photo, note)"
+        },
+        "product_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "query": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "thresholds": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "status": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "force": {
+          "mode": "ai",
+          "description": "true only when the user confirmed saving a duplicate receipt, otherwise false"
+        },
+        "file_base64": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_name": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_mime": {
+          "mode": "fixed",
+          "value": ""
+        }
+      }
+    },
+    {
+      "type": "workflow",
+      "workflow": "Warranty Agent - Tools",
+      "name": "save_product_photo",
+      "description": "Saves a product photo to an existing product in Airtable and returns a short description of the product.",
+      "inputs": {
+        "action": {
+          "mode": "fixed",
+          "value": "save_product_photo"
+        },
+        "file_id": {
+          "mode": "ai",
+          "description": "Telegram file_id of the product photo"
+        },
+        "receipt_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "items_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "product_id": {
+          "mode": "ai",
+          "description": "product_id (rec...) the photo belongs to"
+        },
+        "query": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "thresholds": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "status": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "force": {
+          "mode": "fixed",
+          "value": false
+        },
+        "file_base64": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_name": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_mime": {
+          "mode": "fixed",
+          "value": ""
+        }
+      }
+    },
+    {
+      "type": "workflow",
+      "workflow": "Warranty Agent - Tools",
+      "name": "search_products",
+      "description": "Searches the records by keywords. Returns name, manufacturer, model, store, purchase date, warranty until, days left, validity and status.",
+      "inputs": {
+        "action": {
+          "mode": "fixed",
+          "value": "search_products"
+        },
+        "file_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "receipt_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "items_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "product_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "query": {
+          "mode": "ai",
+          "description": "Keywords separated by spaces, empty string = everything"
+        },
+        "thresholds": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "status": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "force": {
+          "mode": "fixed",
+          "value": false
+        },
+        "file_base64": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_name": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_mime": {
+          "mode": "fixed",
+          "value": ""
+        }
+      }
+    },
+    {
+      "type": "workflow",
+      "workflow": "Warranty Agent - Tools",
+      "name": "warranties_due",
+      "description": "Returns active products whose warranty is about to end and whose reminder (6 months / 1 month / 1 week) has not been sent yet. Each product has the fields reminder and thresholds_to_mark.",
+      "inputs": {
+        "action": {
+          "mode": "fixed",
+          "value": "warranties_due"
+        },
+        "file_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "receipt_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "items_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "product_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "query": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "thresholds": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "status": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "force": {
+          "mode": "fixed",
+          "value": false
+        },
+        "file_base64": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_name": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_mime": {
+          "mode": "fixed",
+          "value": ""
+        }
+      }
+    },
+    {
+      "type": "workflow",
+      "workflow": "Warranty Agent - Tools",
+      "name": "mark_notified",
+      "description": "Marks the reminders sent for a product (thresholds e.g. \"6m,1m\") and optionally changes the status to Active / Claimed / Retired.",
+      "inputs": {
+        "action": {
+          "mode": "fixed",
+          "value": "mark_notified"
+        },
+        "file_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "receipt_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "items_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "product_id": {
+          "mode": "ai",
+          "description": "product_id (rec...)"
+        },
+        "query": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "thresholds": {
+          "mode": "ai",
+          "description": "Comma-separated codes 6m, 1m, 1w: exactly the thresholds_to_mark value from warranties_due; empty when only the status changes"
+        },
+        "status": {
+          "mode": "ai",
+          "description": "Empty, or Active / Claimed / Retired"
+        },
+        "force": {
+          "mode": "fixed",
+          "value": false
+        },
+        "file_base64": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_name": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_mime": {
+          "mode": "fixed",
+          "value": ""
+        }
+      }
+    },
+    {
+      "type": "workflow",
+      "workflow": "Warranty Agent - Tools",
+      "name": "get_settings",
+      "description": "Returns the owner's Telegram user ID from the Settings table (needed for morning reminders).",
+      "inputs": {
+        "action": {
+          "mode": "fixed",
+          "value": "get_settings"
+        },
+        "file_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "receipt_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "items_json": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "product_id": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "query": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "thresholds": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "status": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "force": {
+          "mode": "fixed",
+          "value": false
+        },
+        "file_base64": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_name": {
+          "mode": "fixed",
+          "value": ""
+        },
+        "file_mime": {
+          "mode": "fixed",
+          "value": ""
+        }
+      }
+    }
+  ]
+}

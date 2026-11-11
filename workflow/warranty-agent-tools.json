@@ -1,0 +1,1792 @@
+{
+  "name": "Warranty Agent - Tools",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "action"
+            },
+            {
+              "name": "file_id"
+            },
+            {
+              "name": "receipt_json"
+            },
+            {
+              "name": "items_json"
+            },
+            {
+              "name": "product_id"
+            },
+            {
+              "name": "query"
+            },
+            {
+              "name": "thresholds"
+            },
+            {
+              "name": "status"
+            },
+            {
+              "name": "force",
+              "type": "boolean"
+            },
+            {
+              "name": "file_base64"
+            },
+            {
+              "name": "file_name"
+            },
+            {
+              "name": "file_mime"
+            }
+          ]
+        }
+      },
+      "id": "daeae948-8308-4e73-9164-60a03dee1f9d",
+      "name": "Called by agent",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3ef9b1ba-0e8b-4cb6-8d17-5c4db7b0f7f8",
+              "name": "airtable_base_id",
+              "value": "PASTE_YOUR_AIRTABLE_BASE_ID",
+              "type": "string"
+            },
+            {
+              "id": "24556279-4a22-473f-82b6-9a19d464a786",
+              "name": "model",
+              "value": "claude-sonnet-5-5",
+              "type": "string"
+            },
+            {
+              "id": "8276913f-dc2c-4bf8-a572-91b6bb2daee5",
+              "name": "reminder_days",
+              "value": "183,31,7",
+              "type": "string"
+            },
+            {
+              "id": "d31f4848-3671-46f5-900a-a8df03196157",
+              "name": "default_warranty_months",
+              "value": 24,
+              "type": "number"
+            },
+            {
+              "id": "fd4cf87e-e41a-4638-a2e7-ccbf30a9b4ed",
+              "name": "timezone",
+              "value": "Europe/Prague",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {},
+        "includeOtherFields": true
+      },
+      "id": "0a1ab3c6-038c-4fa1-9f74-4b49a6d596b3",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.airtable_base_id }}",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              },
+              "rightValue": "app"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "140c3d63-4187-4186-baa9-0ffeac9a63a9",
+      "name": "Airtable base set?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0673d104-d04e-4dbb-9fd5-abcdc6618c35",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "1dad76b6-7852-4628-b16e-1f4f6d129cbd",
+              "name": "error",
+              "value": "Not configured: the \"Config\" node of the \"Warranty Agent - Tools\" workflow is missing the Airtable base ID (starts with app...).",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7b507195-4feb-4706-a57a-af16cf2ee4e5",
+      "name": "Config error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ [\"read_receipt\", \"save_purchase\", \"save_product_photo\"].includes($json.action) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "629022ca-5bfd-459e-a4c7-98a3b04a24a9",
+      "name": "Needs file?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.file_base64 }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4310db00-83ac-43d4-8866-58f2744e433e",
+      "name": "File sent directly?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst buf = Buffer.from(String(cfg.file_base64), 'base64');\nconst bin = await this.helpers.prepareBinaryData(buf, cfg.file_name || 'file', cfg.file_mime || undefined);\nreturn [{ json: { source: 'base64' }, binary: { data: bin } }];"
+      },
+      "id": "989cf0bb-d7d0-4a84-ad9c-f3d79395c169",
+      "name": "File from base64",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $(\"Config\").first().json.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "0950aca8-0ef0-47af-9c03-ee8bcd79edac",
+      "name": "Download file from Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Config\").first().json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "read_receipt",
+                    "id": "16bef315-0394-49a4-8745-9342ef226c93"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "read_receipt"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Config\").first().json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "save_purchase",
+                    "id": "4ff73cc3-6e82-4285-92d5-2871c9a0f2c9"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "save_purchase"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Config\").first().json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "save_product_photo",
+                    "id": "9ddde3c2-e138-4787-83fb-79602e8a6ec0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "save_product_photo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Config\").first().json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "search_products",
+                    "id": "7f04908e-8d00-4c16-b311-85b2c171f843"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "search_products"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Config\").first().json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "warranties_due",
+                    "id": "57b962f8-ec9a-4d06-af31-3cc68eca3bf0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warranties_due"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Config\").first().json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "mark_notified",
+                    "id": "48e8346d-ec4f-43b1-9d25-0c17889970dc"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "mark_notified"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $(\"Config\").first().json.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "get_settings",
+                    "id": "1a328e75-86a1-4e35-82f8-6364f285cfb8"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "get_settings"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Unknown action"
+        }
+      },
+      "id": "6d8c8fb4-9513-4d82-9075-50ffcb66ac62",
+      "name": "Route by action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e940f887-be2d-43c8-96e6-7f93ab9e8a14",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "6da7fa9f-a2aa-47cc-b051-d265b6ae78b4",
+              "name": "error",
+              "value": "=Unknown action: {{ $(\"Config\").first().json.action }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a2f99b9e-c9be-4087-9f0f-c25a0a1e557a",
+      "name": "Unknown action",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        1872
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ($binary.data?.mimeType || \"\") === \"application/pdf\" || ($binary.data?.fileName || $json.result?.file_path || \"\").toLowerCase().endsWith(\".pdf\") }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a8156e52-138c-4728-8dd5-6a2c5ca9cdb0",
+      "name": "Is it a PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $(\"Config\").first().json.model }}"
+        },
+        "text": "=You are an expert in reading shopping receipts and invoices. Analyse the attached proof of purchase and return ONLY valid JSON, with no markdown and no comments.\nToday's date: {{ $now.setZone($(\"Config\").first().json.timezone).toFormat(\"yyyy-MM-dd\") }}\n\nResponse shape:\n{\n  \"is_receipt\": true,\n  \"legibility\": \"ok | partial | illegible\",\n  \"store\": \"seller name, e.g. Example Store Ltd.\",\n  \"store_type\": \"online | physical | unknown\",\n  \"purchase_date\": \"YYYY-MM-DD\",\n  \"receipt_number\": \"receipt/invoice number or empty string\",\n  \"currency\": \"ISO code, e.g. EUR or CZK\",\n  \"total\": 0,\n  \"items\": [\n    {\n      \"name_on_receipt\": \"exact text from the receipt\",\n      \"name\": \"clear product name in the language of the receipt\",\n      \"manufacturer\": \"manufacturer if obvious, otherwise empty string\",\n      \"model\": \"model/type designation if on the receipt, otherwise empty string\",\n      \"category\": \"appliance | electronics | tools | clothing | footwear | household | sport | other | no_warranty\",\n      \"quantity\": 1,\n      \"price\": 0,\n      \"has_warranty\": true,\n      \"warranty_months\": {{ $(\"Config\").first().json.default_warranty_months }},\n      \"warranty_source\": \"receipt | statutory_default | uncertain\",\n      \"needs_photo\": false,\n      \"note\": \"\"\n    }\n  ]\n}\n\nRules:\n- If the image/document is not a receipt or invoice, return \"is_receipt\": false and an empty \"items\" array.\n- If the receipt cannot be read, set \"legibility\": \"illegible\".\n- Put ALL lines of the receipt into \"items\". Mark items without warranty with \"has_warranty\": false and \"category\": \"no_warranty\".\n- No warranty: food, drinks, consumable toiletries and cosmetics, bottle deposits, bags, services, gift cards, vouchers, shipping, discounts.\n- With warranty: electronics, appliances, tools, clothing, footwear, accessories, household goods, sports equipment and similar durable goods.\n- Warranty length: if the receipt states it for an item or for the whole receipt, use it with \"warranty_source\": \"receipt\". Otherwise use {{ $(\"Config\").first().json.default_warranty_months }} months with \"warranty_source\": \"statutory_default\". For used/opened goods or unclear information use \"warranty_source\": \"uncertain\".\n- \"needs_photo\": true for clothing, footwear, accessories and for items whose name is abbreviated or too vague to recognise the product later.\n- Never invent a manufacturer or model that is not on the receipt.\n- Prices as numbers with a decimal point, including VAT.",
+        "inputType": "binary",
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "id": "34848dfa-c016-463b-8c87-e4c27a58d029",
+      "name": "Claude reads PDF",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $(\"Config\").first().json.model }}"
+        },
+        "text": "=You are an expert in reading shopping receipts and invoices. Analyse the attached proof of purchase and return ONLY valid JSON, with no markdown and no comments.\nToday's date: {{ $now.setZone($(\"Config\").first().json.timezone).toFormat(\"yyyy-MM-dd\") }}\n\nResponse shape:\n{\n  \"is_receipt\": true,\n  \"legibility\": \"ok | partial | illegible\",\n  \"store\": \"seller name, e.g. Example Store Ltd.\",\n  \"store_type\": \"online | physical | unknown\",\n  \"purchase_date\": \"YYYY-MM-DD\",\n  \"receipt_number\": \"receipt/invoice number or empty string\",\n  \"currency\": \"ISO code, e.g. EUR or CZK\",\n  \"total\": 0,\n  \"items\": [\n    {\n      \"name_on_receipt\": \"exact text from the receipt\",\n      \"name\": \"clear product name in the language of the receipt\",\n      \"manufacturer\": \"manufacturer if obvious, otherwise empty string\",\n      \"model\": \"model/type designation if on the receipt, otherwise empty string\",\n      \"category\": \"appliance | electronics | tools | clothing | footwear | household | sport | other | no_warranty\",\n      \"quantity\": 1,\n      \"price\": 0,\n      \"has_warranty\": true,\n      \"warranty_months\": {{ $(\"Config\").first().json.default_warranty_months }},\n      \"warranty_source\": \"receipt | statutory_default | uncertain\",\n      \"needs_photo\": false,\n      \"note\": \"\"\n    }\n  ]\n}\n\nRules:\n- If the image/document is not a receipt or invoice, return \"is_receipt\": false and an empty \"items\" array.\n- If the receipt cannot be read, set \"legibility\": \"illegible\".\n- Put ALL lines of the receipt into \"items\". Mark items without warranty with \"has_warranty\": false and \"category\": \"no_warranty\".\n- No warranty: food, drinks, consumable toiletries and cosmetics, bottle deposits, bags, services, gift cards, vouchers, shipping, discounts.\n- With warranty: electronics, appliances, tools, clothing, footwear, accessories, household goods, sports equipment and similar durable goods.\n- Warranty length: if the receipt states it for an item or for the whole receipt, use it with \"warranty_source\": \"receipt\". Otherwise use {{ $(\"Config\").first().json.default_warranty_months }} months with \"warranty_source\": \"statutory_default\". For used/opened goods or unclear information use \"warranty_source\": \"uncertain\".\n- \"needs_photo\": true for clothing, footwear, accessories and for items whose name is abbreviated or too vague to recognise the product later.\n- Never invent a manufacturer or model that is not on the receipt.\n- Prices as numbers with a decimal point, including VAT.",
+        "inputType": "binary",
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "id": "108efe7c-877d-4d10-9987-2f1ac1885209",
+      "name": "Claude reads photo",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nlet text = '';\nif (typeof raw.content === 'string') text = raw.content;\nelse if (Array.isArray(raw.content)) text = raw.content.map(function (c) { return c.text || ''; }).join('\\n');\nelse if (typeof raw.text === 'string') text = raw.text;\nelse if (typeof raw.output === 'string') text = raw.output;\nelse text = JSON.stringify(raw);\nconst start = text.indexOf('{');\nconst end = text.lastIndexOf('}');\nconst fileId = $('Config').first().json.file_id;\ntry {\n  const data = JSON.parse(start >= 0 && end > start ? text.slice(start, end + 1) : text);\n  return [{ json: { ok: true, file_id: fileId, result: data } }];\n} catch (e) {\n  return [{ json: { ok: false, file_id: fileId, error: 'Could not parse the model response as JSON.', raw_response: text.slice(0, 2000) } }];\n}"
+      },
+      "id": "6fc9f017-88ee-477d-91e0-74b0089847e8",
+      "name": "Parse Claude response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nfunction parse(v, fallback) {\n  if (v === undefined || v === null || v === '') return fallback;\n  if (typeof v === 'object') return v;\n  try { return JSON.parse(v); } catch (e) { return fallback; }\n}\nfunction esc(s) { return String(s || '').replace(/'/g, \"\\\\'\"); }\nconst receipt = parse(cfg.receipt_json, {});\nlet items = parse(cfg.items_json, []);\nif (!Array.isArray(items)) items = items.items || [];\nitems = items.filter(function (p) { return p && p.has_warranty !== false; });\nif (!cfg.file_id && !cfg.file_base64) return [{ json: { error: 'Missing file_id of the receipt.' } }];\nif (!receipt.purchase_date) return [{ json: { error: 'Missing purchase_date in receipt_json.' } }];\nif (items.length === 0) return [{ json: { error: 'No items with warranty to save.' } }];\nconst formula = receipt.receipt_number\n  ? \"AND({Store}='\" + esc(receipt.store) + \"',{Receipt number}='\" + esc(receipt.receipt_number) + \"',IS_SAME({Purchase date},'\" + esc(receipt.purchase_date) + \"','day'))\"\n  : 'FALSE()';\nconst receiptBody = {\n  typecast: true,\n  records: [{ fields: {\n    'Store': receipt.store || '',\n    'Store type': receipt.store_type || 'unknown',\n    'Purchase date': receipt.purchase_date,\n    'Receipt number': receipt.receipt_number || '',\n    'Total': Number(receipt.total) || 0,\n    'Currency': receipt.currency || '',\n    'Telegram file ID': cfg.file_id || ''\n  } }]\n};\nreturn [{ json: { receipt: receipt, items: items, formula: formula, receipt_body: receiptBody, force: cfg.force === true || cfg.force === 'true' }, binary: $input.first().binary }];"
+      },
+      "id": "e291cfc5-e65b-4b6f-90f4-3c3ad2ef8c74",
+      "name": "Prepare purchase",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "929d1172-401d-4528-825e-a6b7824558e2",
+      "name": "Missing data?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7b4b2722-3cfc-4076-93cc-4a99659b954d",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "29475b55-e553-4d2c-974a-af258f96b17f",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "abf59431-1d82-4153-939a-4f826910c221",
+      "name": "Return input error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ($binary.data?.mimeType || \"\").startsWith(\"image/\") }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c3d4586f-ade7-4be0-97d4-8aeee807cf24",
+      "name": "Is it an image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "multiStep",
+        "operations": {
+          "operations": [
+            {
+              "operation": "resize",
+              "width": 1600,
+              "height": 1600,
+              "resizeOption": "onlyIfLarger"
+            }
+          ]
+        },
+        "options": {
+          "fileName": "receipt.jpg",
+          "format": "jpeg",
+          "quality": 80
+        }
+      },
+      "id": "6f25b74a-8b15-4b18-b82d-ea1fb4c41b95",
+      "name": "Shrink receipt photo",
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst bin = (item.binary || {}).data;\nif (!bin) throw new Error('The receipt file could not be downloaded.');\nconst buf = await this.helpers.getBinaryDataBuffer(0, 'data');\nif (buf.length > 5 * 1024 * 1024) throw new Error('The file is larger than 5 MB, which Airtable does not accept. Please send a smaller file or a photo.');\nconst name = bin.fileName || (bin.mimeType === 'application/pdf' ? 'receipt.pdf' : 'receipt.jpg');\nreturn [{ json: { contentType: bin.mimeType || 'application/octet-stream', filename: name, file: buf.toString('base64') } }];"
+      },
+      "id": "1f71fbdb-327f-475c-a43b-4e32f081e647",
+      "name": "Prepare receipt attachment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ encodeURIComponent(\"Receipts\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filterByFormula",
+              "value": "={{ $(\"Prepare purchase\").first().json.formula }}"
+            },
+            {
+              "name": "maxRecords",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "id": "c21a1499-2e4b-4533-8737-935334670cac",
+      "name": "Find duplicate receipt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2016,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.records || []).length > 0 && !$(\"Prepare purchase\").first().json.force }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b710bec0-2800-4cc6-a691-cacbe7ea1325",
+      "name": "Is it a duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1a72ce17-a662-4e1b-a458-f76aa5cfdb70",
+              "name": "ok",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "ca9d1344-75cd-4ac8-8d24-c127c4486eca",
+              "name": "duplicate",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "c412b7cd-afb5-48b3-981f-8bff1c439ead",
+              "name": "existing_receipt_id",
+              "value": "={{ $json.records[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "fc58305d-342d-4fea-8014-782e81d36c6d",
+              "name": "message",
+              "value": "This receipt is already saved (same store, receipt number and date). Call the tool again with force=true to save it anyway.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f7137489-e777-45a3-9749-d5dcaff1dced",
+      "name": "Return duplicate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2464,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ encodeURIComponent(\"Receipts\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($(\"Prepare purchase\").first().json.receipt_body) }}"
+      },
+      "id": "63ee17a7-e475-40d9-bb04-be0aa6d45de8",
+      "name": "Create receipt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2464,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://content.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ $(\"Create receipt\").first().json.records[0].id }}/{{ encodeURIComponent(\"File\") }}/uploadAttachment",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contentType: $(\"Prepare receipt attachment\").first().json.contentType, filename: $(\"Prepare receipt attachment\").first().json.filename, file: $(\"Prepare receipt attachment\").first().json.file }) }}"
+      },
+      "id": "52681c33-30a3-4acf-8340-462ebab22184",
+      "name": "Upload receipt to Airtable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2688,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Prepare purchase').first().json;\nconst cfg = $('Config').first().json;\nconst receiptId = $('Create receipt').first().json.records[0].id;\nconst r = data.receipt;\nconst sources = { receipt: 'Receipt', statutory_default: 'Statutory (default)', uncertain: 'To verify' };\nconst records = data.items.map(function (p) {\n  return { fields: {\n    'Name': p.name || p.name_on_receipt || 'Unnamed',\n    'Name on receipt': p.name_on_receipt || '',\n    'Manufacturer': p.manufacturer || '',\n    'Model': p.model || '',\n    'Category': p.category || 'other',\n    'Price': Number(p.price) || 0,\n    'Quantity': Number(p.quantity) || 1,\n    'Store': r.store || '',\n    'Purchase date': r.purchase_date,\n    'Warranty (months)': Number(p.warranty_months) || Number(cfg.default_warranty_months) || 24,\n    'Warranty source': sources[p.warranty_source] || 'Statutory (default)',\n    'Status': 'Active',\n    'Needs photo': p.needs_photo === true,\n    'Note': p.note || '',\n    'Receipt': [receiptId]\n  } };\n});\nconst out = [];\nfor (let i = 0; i < records.length; i += 10) {\n  out.push({ json: { body: { typecast: true, records: records.slice(i, i + 10) } } });\n}\nreturn out;"
+      },
+      "id": "6a5e4fbb-14f4-4e20-80b7-335bdba47879",
+      "name": "Prepare products",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ encodeURIComponent(\"Products\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "id": "5c57085e-5fd0-4fc5-8a24-0d4819bc8dca",
+      "name": "Create products",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3136,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const products = [];\nfor (const item of $input.all()) {\n  for (const r of (item.json.records || [])) {\n    products.push({ product_id: r.id, name: r.fields['Name'], warranty_until: r.fields['Warranty until'] || null, needs_photo: r.fields['Needs photo'] === true });\n  }\n}\nreturn [{ json: { ok: true, receipt_id: $('Create receipt').first().json.records[0].id, saved_products: products.length, products: products } }];"
+      },
+      "id": "1682fe94-ce38-4492-a0e0-ca5154e42a19",
+      "name": "Save summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "multiStep",
+        "operations": {
+          "operations": [
+            {
+              "operation": "resize",
+              "width": 1600,
+              "height": 1600,
+              "resizeOption": "onlyIfLarger"
+            }
+          ]
+        },
+        "options": {
+          "fileName": "product.jpg",
+          "format": "jpeg",
+          "quality": 80
+        }
+      },
+      "id": "0c9b8ba6-9885-446f-83dc-89db94221522",
+      "name": "Shrink product photo",
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 2,
+      "position": [
+        896,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nif (!cfg.product_id) throw new Error('Missing product_id.');\nconst item = $input.first();\nconst buf = await this.helpers.getBinaryDataBuffer(0, 'data');\nreturn [{ json: { product_id: cfg.product_id, contentType: 'image/jpeg', filename: 'product.jpg', file: buf.toString('base64') }, binary: item.binary }];"
+      },
+      "id": "ec583553-913d-42cd-88af-1ed75023ab83",
+      "name": "Prepare product photo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $(\"Config\").first().json.model }}"
+        },
+        "text": "Describe the product in the photo in one short sentence so it can be recognised later: type, colour, material, visible brand or model. Return only that sentence.",
+        "inputType": "binary",
+        "options": {
+          "maxTokens": 200
+        }
+      },
+      "id": "6b253f01-526e-4bc6-87cd-fb79a4dfc7f3",
+      "name": "Claude describes product",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nlet text = '';\nif (typeof raw.content === 'string') text = raw.content;\nelse if (Array.isArray(raw.content)) text = raw.content.map(function (c) { return c.text || ''; }).join(' ');\nelse text = raw.text || raw.output || '';\nreturn [{ json: { description: text.trim() } }];"
+      },
+      "id": "4e53e46b-1122-48fd-a4fc-870756814155",
+      "name": "Description text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://content.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ $(\"Prepare product photo\").first().json.product_id }}/{{ encodeURIComponent(\"Product photo\") }}/uploadAttachment",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contentType: $(\"Prepare product photo\").first().json.contentType, filename: $(\"Prepare product photo\").first().json.filename, file: $(\"Prepare product photo\").first().json.file }) }}"
+      },
+      "id": "a244d568-a6e0-4964-8a50-674e81a48e0f",
+      "name": "Upload photo to Airtable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1792,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ encodeURIComponent(\"Products\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ records: [{ id: $(\"Prepare product photo\").first().json.product_id, fields: { \"Description\": $(\"Description text\").first().json.description, \"Needs photo\": false } }] }) }}"
+      },
+      "id": "5b85f30b-3d91-4427-8f19-1a2bfd090461",
+      "name": "Save product description",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2016,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3ae92ee6-ecfd-42b8-951b-3492076301ac",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "f292388f-d423-4f1e-a704-5090117dad59",
+              "name": "product_id",
+              "value": "={{ $(\"Prepare product photo\").first().json.product_id }}",
+              "type": "string"
+            },
+            {
+              "id": "226255f0-e480-4a73-bd87-405a8998aa31",
+              "name": "description",
+              "value": "={{ $(\"Description text\").first().json.description }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "af3d3cdd-e411-46c6-a1fd-af5797834cfd",
+      "name": "Photo result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = String($('Config').first().json.query || '').trim().toLowerCase();\nconst words = query.split(' ').filter(function (s) { return s.length > 1; }).map(function (s) { return s.replace(/'/g, ''); });\nconst fields = \"LOWER(CONCATENATE({Name},' ',{Name on receipt},' ',{Manufacturer},' ',{Model},' ',{Category},' ',{Store},' ',{Description}))\";\nconst formula = words.length === 0 ? '' : 'AND(' + words.map(function (s) { return \"SEARCH('\" + s + \"',\" + fields + ')'; }).join(',') + ')';\nreturn [{ json: { formula: formula } }];"
+      },
+      "id": "1aa95137-5eb5-4752-a0e2-0a1387fa9916",
+      "name": "Search formula",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ encodeURIComponent(\"Products\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filterByFormula",
+              "value": "={{ $json.formula }}"
+            },
+            {
+              "name": "pageSize",
+              "value": "100"
+            }
+          ]
+        }
+      },
+      "id": "0a2ef8a4-4ec7-498f-a29f-8248b4f86dd8",
+      "name": "Load products",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const records = $input.first().json.records || [];\nconst products = records.slice(0, 50).map(function (r) {\n  const f = r.fields || {};\n  return {\n    product_id: r.id, name: f['Name'], manufacturer: f['Manufacturer'] || '', model: f['Model'] || '', category: f['Category'] || '',\n    store: f['Store'] || '', purchase_date: f['Purchase date'], warranty_until: f['Warranty until'], days_left: f['Days left'],\n    validity: f['Validity'], status: f['Status'], description: f['Description'] || '', has_photo: Array.isArray(f['Product photo']) && f['Product photo'].length > 0\n  };\n});\nreturn [{ json: { ok: true, count: records.length, shown: products.length, products: products } }];"
+      },
+      "id": "416bdf05-28fe-4cd4-ab04-72043ded4e3c",
+      "name": "Simplify products",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const days = String($('Config').first().json.reminder_days || '183,31,7').split(',').map(function (s) { return Number(s.trim()); });\nconst flags = ['Notified 6m', 'Notified 1m', 'Notified 1w'];\nconst parts = days.slice(0, 3).map(function (d, i) { return 'AND({Days left}<=' + d + ',NOT({' + flags[i] + '}))'; });\nconst formula = \"AND({Status}='Active',{Days left}>=0,OR(\" + parts.join(',') + '))';\nreturn [{ json: { formula: formula, days: days } }];"
+      },
+      "id": "5ea386d5-659d-4106-bcd8-4815a653943b",
+      "name": "Reminder formula",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        1296
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ encodeURIComponent(\"Products\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filterByFormula",
+              "value": "={{ $json.formula }}"
+            },
+            {
+              "name": "pageSize",
+              "value": "100"
+            }
+          ]
+        }
+      },
+      "id": "7277c481-3f38-42eb-ba19-3992e9d5763e",
+      "name": "Load warranties due",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        1296
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const days = $('Reminder formula').first().json.days;\nconst codes = ['6m', '1m', '1w'];\nconst labels = { '6m': '6 months', '1m': '1 month', '1w': '1 week' };\nconst records = $input.first().json.records || [];\nconst products = records.map(function (r) {\n  const f = r.fields || {};\n  const left = Number(f['Days left']);\n  const reached = [];\n  codes.forEach(function (k, i) { if (left <= days[i] && f['Notified ' + k] !== true) reached.push(k); });\n  const nearest = reached.length ? reached[reached.length - 1] : null;\n  return {\n    product_id: r.id, name: f['Name'], manufacturer: f['Manufacturer'] || '', model: f['Model'] || '', category: f['Category'] || '',\n    store: f['Store'] || '', purchase_date: f['Purchase date'], warranty_until: f['Warranty until'], days_left: left,\n    reminder: nearest ? labels[nearest] : null, thresholds_to_mark: reached.join(',')\n  };\n});\nreturn [{ json: { ok: true, count: products.length, products: products } }];"
+      },
+      "id": "193e3a53-a9f6-4b68-b429-d29fae19a062",
+      "name": "Determine reminders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        1296
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nif (!cfg.product_id) throw new Error('Missing product_id.');\nconst fields = {};\nString(cfg.thresholds || '').split(',').map(function (s) { return s.trim(); }).forEach(function (k) {\n  if (k === '6m' || k === '1m' || k === '1w') fields['Notified ' + k] = true;\n});\nconst allowed = ['Active', 'Claimed', 'Retired'];\nif (cfg.status && allowed.indexOf(cfg.status) >= 0) fields['Status'] = cfg.status;\nif (Object.keys(fields).length === 0) throw new Error('Nothing to save: provide thresholds (6m,1m,1w) or a status.');\nreturn [{ json: { body: { typecast: true, records: [{ id: cfg.product_id, fields: fields }] } } }];"
+      },
+      "id": "0a078870-aa69-4de6-8483-cf8d47347acd",
+      "name": "Prepare marking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ encodeURIComponent(\"Products\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "id": "3aad921f-2064-4635-aa6a-e72536258a87",
+      "name": "Save marking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c3cf727a-e538-4234-802f-7a1f2f13349f",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "55072273-6927-4ca2-9883-120be22807c7",
+              "name": "product_id",
+              "value": "={{ $json.records[0].id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0e7ce29d-e52f-47e7-9c92-3ae7de16b43f",
+      "name": "Marking result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.airtable.com/v0/{{ $(\"Config\").first().json.airtable_base_id }}/{{ encodeURIComponent(\"Settings\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "options": {},
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "maxRecords",
+              "value": "1"
+            },
+            {
+              "name": "fields[]",
+              "value": "Telegram user ID"
+            }
+          ]
+        }
+      },
+      "id": "365ad002-07ea-42cb-8503-5bb0d12d0121",
+      "name": "Load settings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        896,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "77ea6f54-8d7d-4cab-aff3-2ff9935417b0",
+              "name": "ok",
+              "value": "={{ !!($json.records?.[0]?.fields?.[\"Telegram user ID\"]) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "2e88d6fb-67d7-4054-998a-def2e6cf3636",
+              "name": "telegram_user_id",
+              "value": "={{ String($json.records?.[0]?.fields?.[\"Telegram user ID\"] || \"\") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cda87304-f621-45b3-8c57-41a7711aa972",
+      "name": "Settings result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Warranty Agent - Tools\nCalled by the n8n Agent \"Warranty Agent\" as seven tools (field `action`).\n\n**Setup:** in the **Config** node set `airtable_base_id` (starts with `app...`). Optionally change the model, reminder days, default warranty and time zone.\n\nCredentials: Telegram (same bot as the agent), Anthropic (your own API key), Airtable (Personal Access Token).",
+        "height": 260,
+        "width": 400,
+        "color": 4
+      },
+      "id": "1c924829-8265-4034-bd44-d533caaa9a0f",
+      "name": "Setup note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        112,
+        960
+      ]
+    }
+  ],
+  "connections": {
+    "Called by agent": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Airtable base set?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable base set?": {
+      "main": [
+        [
+          {
+            "node": "Needs file?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Config error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs file?": {
+      "main": [
+        [
+          {
+            "node": "File sent directly?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "File sent directly?": {
+      "main": [
+        [
+          {
+            "node": "File from base64",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download file from Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "File from base64": {
+      "main": [
+        [
+          {
+            "node": "Route by action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file from Telegram": {
+      "main": [
+        [
+          {
+            "node": "Route by action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by action": {
+      "main": [
+        [
+          {
+            "node": "Is it a PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare purchase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Shrink product photo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search formula",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reminder formula",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare marking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Load settings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknown action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is it a PDF?": {
+      "main": [
+        [
+          {
+            "node": "Claude reads PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Claude reads photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude reads PDF": {
+      "main": [
+        [
+          {
+            "node": "Parse Claude response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude reads photo": {
+      "main": [
+        [
+          {
+            "node": "Parse Claude response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare purchase": {
+      "main": [
+        [
+          {
+            "node": "Missing data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Missing data?": {
+      "main": [
+        [
+          {
+            "node": "Return input error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is it an image?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is it an image?": {
+      "main": [
+        [
+          {
+            "node": "Shrink receipt photo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare receipt attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shrink receipt photo": {
+      "main": [
+        [
+          {
+            "node": "Prepare receipt attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare receipt attachment": {
+      "main": [
+        [
+          {
+            "node": "Find duplicate receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find duplicate receipt": {
+      "main": [
+        [
+          {
+            "node": "Is it a duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is it a duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Return duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create receipt": {
+      "main": [
+        [
+          {
+            "node": "Upload receipt to Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload receipt to Airtable": {
+      "main": [
+        [
+          {
+            "node": "Prepare products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare products": {
+      "main": [
+        [
+          {
+            "node": "Create products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create products": {
+      "main": [
+        [
+          {
+            "node": "Save summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shrink product photo": {
+      "main": [
+        [
+          {
+            "node": "Prepare product photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare product photo": {
+      "main": [
+        [
+          {
+            "node": "Claude describes product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude describes product": {
+      "main": [
+        [
+          {
+            "node": "Description text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Description text": {
+      "main": [
+        [
+          {
+            "node": "Upload photo to Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload photo to Airtable": {
+      "main": [
+        [
+          {
+            "node": "Save product description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save product description": {
+      "main": [
+        [
+          {
+            "node": "Photo result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search formula": {
+      "main": [
+        [
+          {
+            "node": "Load products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load products": {
+      "main": [
+        [
+          {
+            "node": "Simplify products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminder formula": {
+      "main": [
+        [
+          {
+            "node": "Load warranties due",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load warranties due": {
+      "main": [
+        [
+          {
+            "node": "Determine reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare marking": {
+      "main": [
+        [
+          {
+            "node": "Save marking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save marking": {
+      "main": [
+        [
+          {
+            "node": "Marking result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load settings": {
+      "main": [
+        [
+          {
+            "node": "Settings result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
